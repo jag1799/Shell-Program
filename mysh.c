@@ -19,12 +19,20 @@ typedef struct History{
 } history;
 
 
-void commandInterfaceHandler();
+void kernelInterface();
+void commandParser(char *command, history *myHistory);
 void checkIfFileExists(char *fileName);
 int checkInputType(char *tokenizedInput);
 char *getCurrentDirectory();
 void changeCurrentDirectory(char *tokenizedInput);
 void makeNewFile(char *tokenizedInput);
+char *getSourceFileContents(char *sourceFile, char *sourceFileContents, int sourceFileSize);
+void destinationFileContents(char *destinationFileName, char *sourceFileContents);
+void printHistory(history *myHistory, int numCommands);
+void clearHistory(history *myHistory, int numCommands);
+void executeCommand(int commandNumber, history *myHistory, int numCommands);
+int charToInt(char tokenizedInput);
+void executeProgram(char** programPath);
 
 char currentDir[256];
 
@@ -32,72 +40,239 @@ char currentDir[256];
 int main(int argc, char const *argv[])
 {
     
-    commandInterfaceHandler();
+    kernelInterface();
 
     return 0;
 }
 
 
-void commandInterfaceHandler(){
+void kernelInterface(){
 
-    //Allocate an initial block of space
     char *command = (char*)malloc(COMMANDSIZE * sizeof(char));
-    char *delimiter = "\t\n ";
     history *myHistory = (history*)malloc(COMMANDHISTORY * sizeof(history));
-
     getCurrentDirectory();
 
     while(1){
-
+        
         fflush(stdout);
-
         printf("# ");
 
         fgets(command, COMMANDSIZE, stdin);
 
-        char *tokenizedInput = strtok(command, delimiter);
+        commandParser(command, myHistory);
 
-        strcpy(myHistory[numCommands].cmd, command); //Store the current command in command history
-        myHistory[numCommands].cmdValue = numCommands; //Store the number of the most recent command
+    }
+}
 
-        if(strcmp(command, "byebye") == 0){
 
-            exit(1); //Exit the shell program
+void commandParser(char *command, history *myHistory){
 
-        } else if(strcmp(tokenizedInput, "dwelt") == 0){
+    //Allocate an initial block of space
+    //char *command = (char*)malloc(COMMANDSIZE * sizeof(char));
+    char *delimiter = "\t\n ";
+    
+    int sourceFileSize = 500;
 
-            tokenizedInput = strtok(NULL, delimiter); //Get the file name
+    char *tokenizedInput = strtok(command, delimiter);
 
-            //Check if it's a file or directory
-            int type = checkInputType(tokenizedInput);
+    strcpy(myHistory[numCommands].cmd, tokenizedInput); //Store the current command in command history
+    myHistory[numCommands].cmdValue = numCommands; //Store the number of the most recent command
 
-            if(type == 1){
+    numCommands++;
 
-                //Directory type
-                printf("Abode is.\n");
+    if(strcmp(command, "byebye") == 0){
 
-            } else {
+        exit(1); //Exit the shell program
 
-                checkIfFileExists(tokenizedInput);
+    } else if(strcmp(tokenizedInput, "dwelt") == 0){ //Check if a file or directory exists
+
+        tokenizedInput = strtok(NULL, delimiter); //Get the file name
+
+        strcat(myHistory[numCommands-1].cmd, " ");
+        strcat(myHistory[numCommands-1].cmd, tokenizedInput);
+
+        //Check if it's a file or directory
+        int type = checkInputType(tokenizedInput);
+
+        if(type == 1){
+
+            //Directory type
+            printf("Abode is.\n");
+
+        } else {
+
+            checkIfFileExists(tokenizedInput);
+
+        }
+    } else if(strcmp(tokenizedInput, "whereami") == 0){ //Check the current working directory
+
+        printf("Current Directory: %s\n", currentDir); //Display current working directory
+
+    } else if(strcmp(tokenizedInput, "movetodir") == 0){ //Move to the designated directory
+
+        tokenizedInput = strtok(NULL, delimiter);
+
+        strcat(myHistory[numCommands-1].cmd, " ");
+        strcat(myHistory[numCommands-1].cmd, tokenizedInput);
+
+        changeCurrentDirectory(tokenizedInput);
+
+    } else if(strcmp(tokenizedInput, "maik") == 0){ //Make a new file in the current directory
+
+        tokenizedInput = strtok(NULL, delimiter); //Get the file name
+
+        makeNewFile(tokenizedInput);
+    
+    } else if(strcmp(tokenizedInput, "coppy") == 0){ //Copy the contents of one file over to another, new, file
+
+        tokenizedInput = strtok(NULL, delimiter); //
+
+        //Note, tokenizedInput[5] is where the '-' symbol is.
+        //Thus, tokenizedInput[6] would be where the file name starts
+        char sourceFileName[20];
+        char destinationFileName[20];
+        int i, j = 5;
+
+        for(i = 0; i < 20; i++){
+
+            sourceFileName[i] = tokenizedInput[j];
+            j++;
+        }
+
+        sourceFileName[i] = '\0';
+
+        //Something to hold the file contents
+        char *sourceFileContents = (char*)malloc(sourceFileSize * sizeof(char));
+
+        sourceFileContents = getSourceFileContents(sourceFileName, sourceFileContents, sourceFileSize);
+
+        tokenizedInput = strtok(NULL, delimiter); //Get the destination file name
+
+        j = 3;
+        for(i = 0; i < 20; i++){
+
+            //Store the destination file separately from the tokenized input (removes the "to-" bit)
+            destinationFileName[i] = tokenizedInput[j];
+            j++;
+
+        }
+
+        //Store the contents of the source file in the new one for a copy
+        destinationFileContents(destinationFileName, sourceFileContents);
+
+    } else if(strcmp(tokenizedInput, "history") == 0){
+
+        tokenizedInput = strtok(NULL, delimiter);
+
+        if(tokenizedInput != NULL){
+
+            if(strcmp(tokenizedInput, "[-c]") == 0){
+
+                clearHistory(myHistory, numCommands);
+                numCommands = 0;
 
             }
-        } else if(strcmp(tokenizedInput, "whereami") == 0){
 
-            
-            printf("Current Directory: %s\n", currentDir); //Display current working directory
+        } else {
 
-        } else if(strcmp(tokenizedInput, "movetodir") == 0){
+            printHistory(myHistory, numCommands);
 
-            tokenizedInput = strtok(NULL, delimiter);
-
-            changeCurrentDirectory(tokenizedInput);
-
-        } else if(strcmp(tokenizedInput, "maik") == 0){
-
-            tokenizedInput = strtok(NULL, delimiter); //Get the file name
-
-            makeNewFile(tokenizedInput);
         }
+
+    } else if(strcmp(tokenizedInput, "replay") == 0){
+
+        tokenizedInput = strtok(NULL, delimiter);
+
+        //Convert the number into an actual integer for execution
+        int commandNumber = charToInt(tokenizedInput[0]);
+
+        executeCommand(commandNumber, myHistory, numCommands);
+
+    } else if(strcmp(tokenizedInput, "start") == 0){
+
+        tokenizedInput = strtok(NULL, delimiter);
+
+        char** programPath = tokenizedInput;
+
+        executeProgram(programPath);
+
+    }
+    
+}
+
+
+void executeProgram(char** programPath){
+
+    int pid = fork();
+    int status;
+
+    if(pid < 0){
+
+        printf("Child fork failure. Exiting process.\n");
+        return;
+
+    } else if(pid == 0){
+
+        if(execvp(*programPath, programPath) < 0){
+
+            printf("execvp() failed.\n");
+            return;
+
+        }  
+    } else {
+
+        while(wait(&status) != pid){
+
+            continue;
+
+        }
+    }
+}
+
+int charToInt(char tokenizedInput){
+
+    int commandNum = tokenizedInput - '0';
+
+    return commandNum;
+}
+
+
+void executeCommand(int commandNumber, history *myHistory, int numCommands){
+
+
+    if(commandNumber > numCommands){
+
+        printf("Error: Command value requested exceeds number of commands used.\n");
+
+    } else {
+
+        char *cmdToExecute = myHistory[commandNumber].cmd;
+
+        commandParser(cmdToExecute, myHistory);
+    }
+
+}
+
+
+void printHistory(history *myHistory, int numCommands){
+
+    int i;
+    for(i = 0; i < numCommands; i++){
+
+        printf("[%d] - %s\n", myHistory[i].cmdValue, myHistory[i].cmd);
+
+    }
+}
+
+
+void clearHistory(history *myHistory, int numCommands){
+
+    int i;
+    for(i = 0; i < numCommands-1; i++){
+
+        memset(myHistory[i].cmd, 0, sizeof(COMMANDSIZE));
+
+        myHistory[i].cmdValue = 0;
         
     }
 }
@@ -173,3 +348,62 @@ char *getCurrentDirectory(){
 
     }
 }
+
+
+char *getSourceFileContents(char *sourceFile, char *sourceFileContents, int sourceFileSize){
+
+    
+    //Check if the file exists
+    if(access(sourceFile, F_OK) == 0){
+
+        //Read the file
+        FILE *sourcePtr = fopen(sourceFile, "r");
+        
+        //FIXME: CANNOT READ AN ARBITRARILY SIZED FILE. SEE YOUR OS BOOKMARKS IN FIREFOX
+        char c;
+        int size = 0;
+        while((c = fgetc(sourcePtr)) != EOF){
+
+            if(size >= sourceFileSize-1){
+
+                sourceFileSize += 500;
+
+                sourceFileContents = realloc(sourceFileContents, sourceFileSize);
+
+            }
+
+            sourceFileContents[size++] = c;
+        }
+
+        sourceFileContents[size++] = '\0';
+        
+        fclose(sourcePtr);
+
+        return sourceFileContents;
+
+    } else {
+
+        printf("Source file does not exist.\n");
+
+    }
+}
+
+
+void destinationFileContents(char *destinationFileName, char *sourceFileContents){
+
+    if(access(destinationFileName, F_OK) == 0){
+
+        printf("Destination file exists already.\n");
+
+    } else {
+
+        //Check if the directory the file is in exists (DOING LATER)
+
+        FILE *destinationPtr = fopen(destinationFileName, "w");
+
+        fprintf(destinationPtr, "%s", sourceFileContents);
+
+        fclose(destinationPtr);
+    }
+}
+
