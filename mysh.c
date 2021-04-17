@@ -32,7 +32,7 @@ void printHistory(history *myHistory, int numCommands);
 void clearHistory(history *myHistory, int numCommands);
 void executeCommand(int commandNumber, history *myHistory, int numCommands);
 int charToInt(char tokenizedInput);
-void executeProgram(char** programPath);
+void executeProgram(char** programPath, char* arguments[]);
 
 char currentDir[256];
 
@@ -192,16 +192,39 @@ void commandParser(char *command, history *myHistory){
 
         tokenizedInput = strtok(NULL, delimiter);
 
-        char** programPath = tokenizedInput;
+        char *arguments[10];
+        int i = 0;
 
-        executeProgram(programPath);
+        char** programPath = &tokenizedInput;
+
+        while(tokenizedInput != NULL){
+
+            //Get the arguments for the program
+            tokenizedInput = strtok(NULL, delimiter);
+
+            if(tokenizedInput == NULL){
+
+                break;
+
+            } else {
+
+                //Allocate space for each argument name
+                arguments[i] = (char*)malloc(50 * sizeof(char));
+
+                //Take in each argument
+                strcpy(arguments[i], tokenizedInput);
+
+            }
+        }
+
+        executeProgram(programPath, arguments);
 
     }
     
 }
 
 
-void executeProgram(char** programPath){
+void executeProgram(char** programPath, char* arguments[]){
 
     int pid = fork();
     int status;
@@ -213,7 +236,7 @@ void executeProgram(char** programPath){
 
     } else if(pid == 0){
 
-        if(execvp(*programPath, programPath) < 0){
+        if(execvp(*programPath, arguments) < 0){
 
             printf("execvp() failed.\n");
             return;
