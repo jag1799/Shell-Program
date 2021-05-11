@@ -357,7 +357,7 @@ void destinationFileContents(char *destinationFileName, char *sourceFileContents
 
     if(access(destinationFileName, F_OK) == 0){
 
-        printf("Destination file exists already.\n");
+        printf("Destination file already exists.\n");
 
     } else {
 
