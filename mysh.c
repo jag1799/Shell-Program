@@ -80,11 +80,11 @@ void commandParser(char *command, history *myHistory){
 
     numCommands++;
 
-    if(strcmp(command, "byebye") == 0){
+    if(strcmp(command, "end") == 0){
 
         exit(1); //Exit the shell program
 
-    } else if(strcmp(tokenizedInput, "dwelt") == 0){ //Check if a file or directory exists
+    } else if(strcmp(tokenizedInput, "exist") == 0){ //Check if a file or directory exists
 
         tokenizedInput = strtok(NULL, delimiter); //Get the file name
 
@@ -97,16 +97,16 @@ void commandParser(char *command, history *myHistory){
         if(type == 1){
 
             //Directory type
-            printf("Abode is.\n");
+            printf("Directory exists.\n");
 
         } else {
 
             checkIfFileExists(tokenizedInput);
 
         }
-    } else if(strcmp(tokenizedInput, "whereami") == 0){ //Check the current working directory
+    } else if(strcmp(tokenizedInput, "currentdir") == 0){ //Check the current working directory
 
-        printf("Current Directory: %s\n", currentDir); //Display current working directory
+        printf("Current Directory: %s\n", currentDir);
 
     } else if(strcmp(tokenizedInput, "movetodir") == 0){ //Move to the designated directory
 
@@ -117,13 +117,13 @@ void commandParser(char *command, history *myHistory){
 
         changeCurrentDirectory(tokenizedInput);
 
-    } else if(strcmp(tokenizedInput, "maik") == 0){ //Make a new file in the current directory
+    } else if(strcmp(tokenizedInput, "fnew") == 0){ //Make a new file in the current directory
 
         tokenizedInput = strtok(NULL, delimiter); //Get the file name
 
         makeNewFile(tokenizedInput);
     
-    } else if(strcmp(tokenizedInput, "coppy") == 0){ //Copy the contents of one file over to another, new, file
+    } else if(strcmp(tokenizedInput, "copy") == 0){ //Copy the contents of one file over to another, new, file
 
         tokenizedInput = strtok(NULL, delimiter); //
 
@@ -166,7 +166,7 @@ void commandParser(char *command, history *myHistory){
 
         if(tokenizedInput != NULL){
 
-            if(strcmp(tokenizedInput, "[-c]") == 0){
+            if(strcmp(tokenizedInput, "clr") == 0){
 
                 clearHistory(myHistory, numCommands);
                 numCommands = 0;
@@ -188,69 +188,10 @@ void commandParser(char *command, history *myHistory){
 
         executeCommand(commandNumber, myHistory, numCommands);
 
-    } else if(strcmp(tokenizedInput, "start") == 0){
-
-        tokenizedInput = strtok(NULL, delimiter);
-
-        char *arguments[10];
-        int i = 0;
-
-        char** programPath = &tokenizedInput;
-
-        while(tokenizedInput != NULL){
-
-            //Get the arguments for the program
-            tokenizedInput = strtok(NULL, delimiter);
-
-            if(tokenizedInput == NULL){
-
-                break;
-
-            } else {
-
-                //Allocate space for each argument name
-                arguments[i] = (char*)malloc(50 * sizeof(char));
-
-                //Take in each argument
-                strcpy(arguments[i], tokenizedInput);
-
-            }
-        }
-
-        executeProgram(programPath, arguments);
-
     }
     
 }
 
-
-void executeProgram(char** programPath, char* arguments[]){
-
-    int pid = fork();
-    int status;
-
-    if(pid < 0){
-
-        printf("Child fork failure. Exiting process.\n");
-        return;
-
-    } else if(pid == 0){
-
-        if(execvp(*programPath, arguments) < 0){
-
-            printf("execvp() failed.\n");
-            return;
-
-        }  
-    } else {
-
-        while(wait(&status) != pid){
-
-            continue;
-
-        }
-    }
-}
 
 int charToInt(char tokenizedInput){
 
@@ -353,11 +294,11 @@ void checkIfFileExists(char *fileName){
 
     if(access(fileName, F_OK) == 0){
 
-        printf("Dwelt Indeed.\n"); //File exists
+        printf("File %s exists.\n", fileName); //File exists
 
     } else {
 
-        printf("Dwelt not.\n"); //File doesn't exist
+        printf("File %s does not exist.\n", fileName); //File doesn't exist
 
     }
 }
